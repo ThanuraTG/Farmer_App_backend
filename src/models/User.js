@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema(
   {
-    name: {
+    username: {
       type: String,
       required: true,
       trim: true
@@ -14,14 +14,23 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true
     },
-    passwordHash: {
+    password_hash: {
       type: String,
       required: true
     },
     role: {
       type: String,
-      enum: ['ADMIN', 'MANAGER', 'DATA_ENTRY', 'USER'],
-      default: 'DATA_ENTRY'
+      enum: ['farmer', 'admin', 'manager', 'data_entry'],
+      default: 'farmer'
+    },
+    phone_number: {
+      type: String,
+      trim: true
+    },
+    division_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Division',
+      default: null
     }
   },
   {
@@ -29,8 +38,8 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// Virtual field to map _id to id for Prisma compatibility in payloads if needed
-userSchema.virtual('id').get(function () {
+// Map _id to user_id virtual
+userSchema.virtual('user_id').get(function () {
   return this._id.toHexString();
 });
 
@@ -38,7 +47,17 @@ userSchema.virtual('id').get(function () {
 userSchema.set('toJSON', {
   virtuals: true,
   transform: (doc, ret) => {
-    ret.id = ret._id.toString();
+    ret.user_id = ret._id.toString();
+    delete ret._id;
+    delete ret.__v;
+    return ret;
+  }
+});
+
+userSchema.set('toObject', {
+  virtuals: true,
+  transform: (doc, ret) => {
+    ret.user_id = ret._id.toString();
     delete ret._id;
     delete ret.__v;
     return ret;

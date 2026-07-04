@@ -16,7 +16,7 @@ const protect = async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'supersecretkeyhere');
 
       // Get user from database using Mongoose
-      const user = await User.findById(decoded.id).select('-passwordHash');
+      const user = await User.findById(decoded.id).select('-password_hash');
 
       if (!user) {
         return res.status(401).json({ message: 'Not authorized, user not found' });
@@ -35,20 +35,23 @@ const protect = async (req, res, next) => {
   }
 };
 
+// Check if user is admin
 const admin = (req, res, next) => {
-  if (req.user && req.user.role === 'ADMIN') {
+  if (req.user && req.user.role === 'admin') {
     next();
   } else {
     return res.status(403).json({ message: 'Access denied. Administrator privileges required' });
   }
 };
 
-const managerOrAdmin = (req, res, next) => {
-  if (req.user && (req.user.role === 'ADMIN' || req.user.role === 'MANAGER')) {
+// Check if user is admin, manager, or data_entry (staff/write access roles)
+const staff = (req, res, next) => {
+  const allowedRoles = ['admin', 'manager', 'data_entry'];
+  if (req.user && allowedRoles.includes(req.user.role)) {
     next();
   } else {
-    return res.status(403).json({ message: 'Access denied. Manager or Administrator privileges required' });
+    return res.status(403).json({ message: 'Access denied. Administrator, Manager, or Data Entry privileges required' });
   }
 };
 
-module.exports = { protect, admin, managerOrAdmin };
+module.exports = { protect, admin, staff };

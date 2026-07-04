@@ -1,24 +1,25 @@
-const PriceRecord = require('../models/PriceRecord');
-const Product = require('../models/Product');
-const Area = require('../models/Area');
+const MarketPrice = require('../models/MarketPrice');
+const Crop = require('../models/Crop');
+const { logAdminAction } = require('../services/adminLogService');
 
-// @desc    Get price records (with filters)
+// @desc    Get market prices (with optional filters)
 // @route   GET /api/prices
-// @access  Private
+// @access  Public
 const getPrices = async (req, res) => {
-  const { areaId, productId, month, year } = req.query;
+  const { crop_id, location } = req.query;
   const filter = {};
 
-  if (areaId) filter.areaId = areaId;
-  if (productId) filter.productId = productId;
-  if (month) filter.month = parseInt(month, 10);
-  if (year) filter.year = parseInt(year, 10);
+  if (crop_id) filter.crop_id = crop_id;
+  if (location) {
+    // Partial case-insensitive match for market location
+    filter.market_location = { $regex: location, $options: 'i' };
+  }
 
   try {
-    const prices = await PriceRecord.find(filter)
-      .populate('product')
-      .populate('area')
-      .sort({ year: -1, month: -1 });
+    const prices = await MarketPrice.find(filter)
+      .populate('crop_id', 'name category image_url')
+      .populate('added_by_user_id', 'username email')
+      .sort({ price_date: -1, createdAt: -1 });
     
     return res.json(prices);
   } catch (error) {
@@ -29,59 +30,39 @@ const getPrices = async (req, res) => {
 
 // @desc    Create a new price record
 // @route   POST /api/prices
-// @access  Private
+// @access  Private (Staff/Admin)
 const createPrice = async (req, res) => {
-  const { productId, areaId, originalPrice, areaPrice, month, year } = req.body;
+  const { crop_id, price_per_kg, market_location, price_date } = req.body;
 
-  if (!productId || !areaId || originalPrice === undefined || areaPrice === undefined || !month || !year) {
-    return res.status(400).json({ message: 'Please provide all fields: productId, areaId, originalPrice, areaPrice, month, and year' });
-  }
-
-  const parsedMonth = parseInt(month, 10);
-  const parsedYear = parseInt(year, 10);
-  const origPrice = parseFloat(originalPrice);
-  const arPrice = parseFloat(areaPrice);
-
-  if (parsedMonth < 1 || parsedMonth > 12) {
-    return res.status(400).json({ message: 'Month must be between 1 and 12' });
+  if (!crop_id || price_per_kg === undefined || !market_location || !price_date) {
+    return res.status(400).json({ message: 'Please provide crop_id, price_per_kg, market_location, and price_date' });
   }
 
   try {
-    // Check unique constraint
-    const recordExists = await PriceRecord.findOne({
-      productId,
-      areaId,
-      month: parsedMonth,
-      year: parsedYear
-    });
-
-    if (recordExists) {
-      return res.status(400).json({ message: 'A price record already exists for this product in this area, month, and year. Please update that record instead.' });
+    // Verify crop exists
+    const crop = await Crop.findById(crop_id);
+    if (!crop) {
+      return res.status(400).json({ message: 'Invalid crop ID' });
     }
 
-    // Verify product and area exist
-    const [product, area] = await Promise.all([
-      Product.findById(productId),
-      Area.findById(areaId)
-    ]);
-
-    if (!product || !area) {
-      return res.status(400).json({ message: 'Invalid product ID or area ID' });
-    }
-
-    let priceRecord = await PriceRecord.create({
-      productId,
-      areaId,
-      originalPrice: origPrice,
-      areaPrice: arPrice,
-      month: parsedMonth,
-      year: parsedYear
+    const priceRecord = await MarketPrice.create({
+      crop_id,
+      price_per_kg: parseFloat(price_per_kg),
+      market_location,
+      price_date: new Date(price_date),
+      added_by_user_id: req.user.user_id || req.user._id
     });
 
-    // Populate and return
-    priceRecord = await priceRecord.populate(['product', 'area']);
+    const populated = await MarketPrice.findById(priceRecord._id)
+      .populate('crop_id', 'name category')
+      .populate('added_by_user_id', 'username email');
 
-    return res.status(201).json(priceRecord);
+    // Log admin action
+    if (req.user) {
+      await logAdminAction(req.user.user_id || req.user._id, 'create', 'MarketPrice', priceRecord.price_id);
+    }
+
+    return res.status(201).json(populated);
   } catch (error) {
     console.error('Error creating price record:', error);
     return res.status(500).json({ message: 'Server error creating price record', error: error.message });
@@ -90,33 +71,33 @@ const createPrice = async (req, res) => {
 
 // @desc    Update a price record
 // @route   PUT /api/prices/:id
-// @access  Private
+// @access  Private (Staff/Admin)
 const updatePrice = async (req, res) => {
   const { id } = req.params;
-  const { originalPrice, areaPrice, month, year } = req.body;
+  const { price_per_kg, market_location, price_date } = req.body;
 
   try {
-    const record = await PriceRecord.findById(id);
+    const record = await MarketPrice.findById(id);
 
     if (!record) {
       return res.status(404).json({ message: 'Price record not found' });
     }
 
-    if (originalPrice !== undefined) record.originalPrice = parseFloat(originalPrice);
-    if (areaPrice !== undefined) record.areaPrice = parseFloat(areaPrice);
-    if (month !== undefined) {
-      const parsedMonth = parseInt(month, 10);
-      if (parsedMonth < 1 || parsedMonth > 12) {
-        return res.status(400).json({ message: 'Month must be between 1 and 12' });
-      }
-      record.month = parsedMonth;
+    if (price_per_kg !== undefined) record.price_per_kg = parseFloat(price_per_kg);
+    if (market_location) record.market_location = market_location;
+    if (price_date) record.price_date = new Date(price_date);
+
+    const updatedRecord = await record.save();
+    const populated = await MarketPrice.findById(updatedRecord._id)
+      .populate('crop_id', 'name category')
+      .populate('added_by_user_id', 'username');
+
+    // Log admin action
+    if (req.user) {
+      await logAdminAction(req.user.user_id || req.user._id, 'update', 'MarketPrice', updatedRecord.price_id);
     }
-    if (year !== undefined) record.year = parseInt(year, 10);
 
-    let updatedRecord = await record.save();
-    updatedRecord = await updatedRecord.populate(['product', 'area']);
-
-    return res.json(updatedRecord);
+    return res.json(populated);
   } catch (error) {
     console.error('Error updating price record:', error);
     return res.status(500).json({ message: 'Server error updating price record', error: error.message });
@@ -125,18 +106,23 @@ const updatePrice = async (req, res) => {
 
 // @desc    Delete a price record
 // @route   DELETE /api/prices/:id
-// @access  Private
+// @access  Private (Staff/Admin)
 const deletePrice = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const record = await PriceRecord.findById(id);
+    const record = await MarketPrice.findById(id);
 
     if (!record) {
       return res.status(404).json({ message: 'Price record not found' });
     }
 
-    await PriceRecord.findByIdAndDelete(id);
+    await MarketPrice.findByIdAndDelete(id);
+
+    // Log admin action
+    if (req.user) {
+      await logAdminAction(req.user.user_id || req.user._id, 'delete', 'MarketPrice', id);
+    }
 
     return res.json({ message: 'Price record deleted successfully' });
   } catch (error) {

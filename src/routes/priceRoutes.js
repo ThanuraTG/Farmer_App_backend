@@ -1,15 +1,16 @@
 const express = require('express');
 const { getPrices, createPrice, updatePrice, deletePrice } = require('../controllers/priceController');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, staff } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
+// Public read, protected writes
 router.route('/')
-  .get(protect, getPrices)
-  .post(protect, createPrice);
+  .get(getPrices)
+  .post(protect, staff, createPrice);
 
 router.route('/:id')
-  .put(protect, updatePrice)
-  .delete(protect, deletePrice);
+  .put(protect, staff, updatePrice)
+  .delete(protect, staff, deletePrice);
 
 module.exports = router;

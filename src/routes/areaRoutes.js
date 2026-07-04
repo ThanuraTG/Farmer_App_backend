@@ -1,15 +1,16 @@
 const express = require('express');
 const { getAreas, createArea, updateArea, deleteArea } = require('../controllers/areaController');
-const { protect, managerOrAdmin } = require('../middleware/authMiddleware');
+const { protect, staff } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
+// Allow public GET for registration dropdown, and staff protection for writes
 router.route('/')
-  .get(protect, getAreas)
-  .post(protect, managerOrAdmin, createArea);
+  .get(getAreas)
+  .post(protect, staff, createArea);
 
 router.route('/:id')
-  .put(protect, managerOrAdmin, updateArea)
-  .delete(protect, managerOrAdmin, deleteArea);
+  .put(protect, staff, updateArea)
+  .delete(protect, staff, deleteArea);
 
 module.exports = router;
