@@ -10,7 +10,6 @@ const cropSchema = new mongoose.Schema(
     category: {
       type: String,
       required: true,
-      enum: ['Food Crops', 'Export & Commercial'],
       trim: true
     },
     description: {
