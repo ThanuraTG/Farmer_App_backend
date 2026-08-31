@@ -1,51 +1,79 @@
+const notificationService = require('../services/notifications/notificationService');
 const Notification = require('../models/Notification');
+const { successResponse, errorResponse } = require('../utils/responseHandler');
 
-// @desc    Get all notifications for a user
-// @route   GET /api/notifications/:userId
-// @access  Private
-const getNotificationsForUser = async (req, res) => {
-  const { userId } = req.params;
-
+const getMyNotifications = async (req, res, next) => {
   try {
-    const notifications = await Notification.find({ user_id: userId })
-      .sort({ sent_at: -1 });
-
-    return res.json(notifications);
-  } catch (error) {
-    console.error('Error fetching notifications:', error);
-    return res.status(500).json({ message: 'Server error fetching notifications', error: error.message });
+    const notifications = await notificationService.getFarmerNotifications(req.user);
+    return successResponse(res, 200, 'Notifications retrieved', notifications);
+  } catch (err) {
+    next(err);
   }
 };
 
-// @desc    Mark a notification as read
-// @route   PATCH /api/notifications/:id/read
-// @access  Private
-const markAsRead = async (req, res) => {
-  const { id } = req.params;
-
+const markRead = async (req, res, next) => {
   try {
-    const notification = await Notification.findById(id);
+    const result = await notificationService.markNotificationRead(req.params.id, req.user._id);
+    return successResponse(res, 200, result.message);
+  } catch (err) {
+    next(err);
+  }
+};
 
+// Admin CRUD
+const adminGetNotifications = async (req, res, next) => {
+  try {
+    const notifications = await Notification.find()
+      .sort({ createdAt: -1 })
+      .populate('targetDistrict', 'name')
+      .populate('targetCrop', 'name');
+    return successResponse(res, 200, 'Admin notifications retrieved', notifications);
+  } catch (err) {
+    next(err);
+  }
+};
+
+const adminCreateNotification = async (req, res, next) => {
+  try {
+    const notification = await Notification.create({
+      ...req.body,
+      createdBy: req.user._id
+    });
+    return successResponse(res, 201, 'Notification created successfully', notification);
+  } catch (err) {
+    next(err);
+  }
+};
+
+const adminUpdateNotification = async (req, res, next) => {
+  try {
+    const notification = await Notification.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!notification) {
-      return res.status(404).json({ message: 'Notification not found' });
+      return errorResponse(res, 404, 'Notification not found');
     }
+    return successResponse(res, 200, 'Notification updated', notification);
+  } catch (err) {
+    next(err);
+  }
+};
 
-    // Verify ownership
-    if (notification.user_id.toString() !== (req.user.user_id || req.user._id).toString()) {
-      return res.status(403).json({ message: 'Unauthorized to access this notification' });
+const adminDeleteNotification = async (req, res, next) => {
+  try {
+    const notification = await Notification.findByIdAndDelete(req.params.id);
+    if (!notification) {
+      return errorResponse(res, 404, 'Notification not found');
     }
-
-    notification.is_read = true;
-    await notification.save();
-
-    return res.json(notification);
-  } catch (error) {
-    console.error('Error updating notification:', error);
-    return res.status(500).json({ message: 'Server error updating notification', error: error.message });
+    return successResponse(res, 200, 'Notification deleted');
+  } catch (err) {
+    next(err);
   }
 };
 
 module.exports = {
-  getNotificationsForUser,
-  markAsRead
+  getMyNotifications,
+  markRead,
+  adminGetNotifications,
+  adminCreateNotification,
+  adminUpdateNotification,
+  adminDeleteNotification
 };

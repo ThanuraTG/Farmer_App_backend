@@ -1,68 +1,34 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
+const env = require('./config/env');
 const connectDB = require('./config/db');
+const app = require('./app');
+const logger = require('./utils/logger');
+const { initPriceSyncJob } = require('./jobs/priceSyncJob');
 
-// Route Imports
-const authRoutes = require('./routes/authRoutes');
-const areaRoutes = require('./routes/areaRoutes');
-const cropRoutes = require('./routes/cropRoutes');
-const priceRoutes = require('./routes/priceRoutes');
-const savedCropRoutes = require('./routes/savedCropRoutes');
-const weatherRoutes = require('./routes/weatherRoutes');
-const notificationRoutes = require('./routes/notificationRoutes');
-const reportRoutes = require('./routes/reportRoutes');
-const adminRoutes = require('./routes/adminRoutes');
-
-// Controller for custom mapping
-const { getUserSavedCrops } = require('./controllers/savedCropController');
-const { protect } = require('./middleware/authMiddleware');
-
-const app = express();
-
-// Connect to MongoDB Atlas
+// Connect to MongoDB Database
 connectDB();
 
-// Configure Middleware
-app.use(cors({
-  origin: '*', // Allow all origins during development
-  credentials: true
-}));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Initialize Price Sync Cron Job (HARTI + CBSL Scraper)
+try {
+  initPriceSyncJob();
+} catch (e) {
+  logger.warn('Price sync cron job initialization skipped', e.message);
+}
 
-// Health Check Route
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Sri Lankan Digital Agriculture Platform API is running.' });
+// Start HTTP Server
+const PORT = env.PORT || 5000;
+const server = app.listen(PORT, () => {
+  logger.info(`========================================================`);
+  logger.info(` Farmer Aswanna Single Shared Backend API running on port ${PORT}`);
+  logger.info(` Health check URL: http://localhost:${PORT}/api/health`);
+  logger.info(`========================================================`);
 });
 
-// Register API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/areas', areaRoutes); // Maps to Divisions CRUD in schema
-app.use('/api/crops', cropRoutes); // Maps to Crop & CropDetail CRUD in schema
-app.use('/api/prices', priceRoutes); // Maps to MarketPrice CRUD in schema
-app.use('/api/saved-crops', savedCropRoutes); // Maps to SavedCrop bookmarks
-app.get('/api/users/:id/saved-crops', protect, getUserSavedCrops); // Custom mapping for user saved crops
-app.use('/api/weather', weatherRoutes); // Weather data with Open-Meteo caching
-app.use('/api/notifications', notificationRoutes); // Farming notification alerts
-app.use('/api/reports', reportRoutes); // Analytics and charts endpoint
-app.use('/api/admin', adminRoutes); // Admin Panel specific stats and logs
-
-// Global Error Handler Middleware
-app.use((err, req, res, next) => {
-  console.error('Unhandled Server Error:', err);
-  const statusCode = err.status || 500;
-  res.status(statusCode).json({
-    message: err.message || 'An unexpected error occurred on the server',
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
-  });
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    logger.error(`Port ${PORT} is already in use by another process.`);
+    process.exit(1);
+  } else {
+    logger.error('Server error:', err);
+  }
 });
 
-// Run Server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`========================================================`);
-  console.log(` Sri Lankan Digital Agriculture API is running on port ${PORT}`);
-  console.log(` Health check URL: http://localhost:${PORT}/api/health`);
-  console.log(`========================================================`);
-});

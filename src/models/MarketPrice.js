@@ -2,62 +2,66 @@ const mongoose = require('mongoose');
 
 const marketPriceSchema = new mongoose.Schema(
   {
-    crop_id: {
+    cropId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Crop',
-      required: true
-    },
-    price_per_kg: {
-      type: Number,
-      required: true
-    },
-    market_location: {
-      type: String,
       required: true,
+      index: true
+    },
+    economicCentreId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'EconomicCentre',
+      required: true,
+      index: true
+    },
+    date: {
+      type: Date,
+      required: true,
+      index: true
+    },
+    minPrice: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    maxPrice: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    averagePrice: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    unit: {
+      type: String,
+      default: 'kg',
       trim: true
     },
-    price_date: {
-      type: Date,
-      required: true
+    source: {
+      type: String,
+      default: 'manual',
+      trim: true
     },
-    added_by_user_id: {
+    notes: {
+      type: String,
+      default: ''
+    },
+    createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true
+      default: null
     }
   },
   {
-    timestamps: { createdAt: true, updatedAt: false } // Only created_at timestamp is in schema
+    timestamps: true
   }
 );
 
-// Add index for performance as requested in Non-Functional Requirements
-marketPriceSchema.index({ crop_id: 1, price_date: -1 });
-
-// Map _id to price_id virtual
-marketPriceSchema.virtual('price_id').get(function () {
-  return this._id.toHexString();
-});
-
-marketPriceSchema.set('toJSON', {
-  virtuals: true,
-  transform: (doc, ret) => {
-    ret.price_id = ret._id.toString();
-    delete ret._id;
-    delete ret.__v;
-    return ret;
-  }
-});
-
-marketPriceSchema.set('toObject', {
-  virtuals: true,
-  transform: (doc, ret) => {
-    ret.price_id = ret._id.toString();
-    delete ret._id;
-    delete ret.__v;
-    return ret;
-  }
-});
+// Compound unique index for crop + economic centre + date
+marketPriceSchema.index({ cropId: 1, economicCentreId: 1, date: 1 }, { unique: true });
+marketPriceSchema.index({ cropId: 1, date: -1 });
 
 const MarketPrice = mongoose.model('MarketPrice', marketPriceSchema);
 

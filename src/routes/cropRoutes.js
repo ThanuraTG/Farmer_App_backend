@@ -1,28 +1,11 @@
 const express = require('express');
-const {
-  getCrops,
-  getCropById,
-  createCrop,
-  updateCrop,
-  deleteCrop,
-  getCropDetails,
-  updateCropDetails
-} = require('../controllers/cropController');
-const { protect, staff } = require('../middleware/authMiddleware');
-
 const router = express.Router();
+const cropController = require('../controllers/cropController');
+const decisionSupportController = require('../controllers/decisionSupportController');
+const { authenticateJWT } = require('../middleware/auth.middleware');
 
-router.route('/')
-  .get(getCrops)
-  .post(protect, staff, createCrop);
-
-router.route('/:id')
-  .get(getCropById)
-  .put(protect, staff, updateCrop)
-  .delete(protect, staff, deleteCrop);
-
-router.route('/:id/details')
-  .get(getCropDetails)
-  .put(protect, staff, updateCropDetails);
+router.get('/', cropController.getCrops);
+router.get('/:id', cropController.getCropById);
+router.get('/:cropId/decision-support', authenticateJWT, decisionSupportController.getDecisionSupport);
 
 module.exports = router;

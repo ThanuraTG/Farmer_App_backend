@@ -1,25 +1,11 @@
 const express = require('express');
-const {
-  registerUser,
-  loginUser,
-  loginAdmin,
-  getMe,
-  getAllUsers,
-  updateUser,
-  deleteUser
-} = require('../controllers/authController');
-const { protect, admin } = require('../middleware/authMiddleware');
-
 const router = express.Router();
+const authController = require('../controllers/authController');
+const { authenticateJWT } = require('../middleware/auth.middleware');
 
-router.post('/register', registerUser);
-router.post('/login', loginUser);
-router.post('/admin-login', loginAdmin);
-router.get('/me', protect, getMe);
-
-// Admin-only user management routes
-router.get('/users', protect, admin, getAllUsers);
-router.put('/users/:id', protect, admin, updateUser);
-router.delete('/users/:id', protect, admin, deleteUser);
+router.post('/register', authController.register);
+router.post('/login', authController.login);
+router.post('/admin-login', authController.login); // Legacy endpoint alias
+router.get('/me', authenticateJWT, authController.getMe);
 
 module.exports = router;

@@ -1,10 +1,27 @@
 const express = require('express');
-const { getPrices, createPrice, updatePrice, deletePrice } = require('../controllers/priceController');
+const {
+  getPrices,
+  getLatestPricesController,
+  getPricesByCropController,
+  getPricesByMarketController,
+  getPriceHistoryController,
+  syncPricesController,
+  createPrice,
+  updatePrice,
+  deletePrice
+} = require('../controllers/priceController');
 const { protect, staff } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-// Public read, protected writes
+// Special Price Queries & Actions
+router.get('/latest', getLatestPricesController);
+router.get('/crop/:crop', getPricesByCropController);
+router.get('/market/:market', getPricesByMarketController);
+router.get('/history', getPriceHistoryController);
+router.post('/sync', syncPricesController);
+
+// Base route & Legacy CRUD
 router.route('/')
   .get(getPrices)
   .post(protect, staff, createPrice);
