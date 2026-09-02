@@ -24,8 +24,7 @@ const getCrops = async (req, res, next) => {
     const crops = await Crop.find(query)
       .sort({ 'name.en': 1 })
       .skip(skip)
-      .limit(Number(limit))
-      .populate('recommendedDistricts', 'name');
+      .limit(Number(limit));
 
     return successResponse(res, 200, 'Crops retrieved', {
       items: crops,
@@ -43,7 +42,7 @@ const getCrops = async (req, res, next) => {
 
 const getCropById = async (req, res, next) => {
   try {
-    const crop = await Crop.findById(req.params.id).populate('recommendedDistricts', 'name code');
+    const crop = await Crop.findById(req.params.id);
     if (!crop) {
       return errorResponse(res, 404, 'Crop not found');
     }
@@ -70,7 +69,7 @@ const adminGetCrops = async (req, res, next) => {
     const skip = (Number(page) - 1) * Number(limit);
     const totalItems = await Crop.countDocuments(query);
     const crops = await Crop.find(query)
-      .sort({ createdAt: -1 })
+      .sort({ cropCode: 1 })
       .skip(skip)
       .limit(Number(limit));
 
@@ -90,7 +89,13 @@ const adminGetCrops = async (req, res, next) => {
 
 const createCrop = async (req, res, next) => {
   try {
-    const crop = await Crop.create(req.body);
+    const latestCrop = await Crop.findOne({ cropCode: /^CO-\d+$/ })
+      .sort({ cropCode: -1 })
+      .select('cropCode')
+      .lean();
+    const latestNumber = latestCrop ? Number(latestCrop.cropCode.replace('CO-', '')) : 0;
+    const cropCode = `CO-${String(latestNumber + 1).padStart(3, '0')}`;
+    const crop = await Crop.create({ ...req.body, cropCode });
     return successResponse(res, 201, 'Crop created successfully', crop);
   } catch (err) {
     next(err);

@@ -3,10 +3,17 @@ const { CROP_STATUSES } = require('../constants/statusEnums');
 
 const cropSchema = new mongoose.Schema(
   {
+    cropCode: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+      uppercase: true,
+      match: [/^CO-\d{3,}$/, 'Crop ID must use the CO-001 format']
+    },
     name: {
-      en: { type: String, required: true, trim: true },
-      si: { type: String, trim: true, default: '' },
-      ta: { type: String, trim: true, default: '' }
+      type: mongoose.Schema.Types.Mixed,
+      required: true
     },
     scientificName: {
       type: String,
@@ -20,9 +27,8 @@ const cropSchema = new mongoose.Schema(
       index: true
     },
     description: {
-      en: { type: String, default: '' },
-      si: { type: String, default: '' },
-      ta: { type: String, default: '' }
+      type: mongoose.Schema.Types.Mixed,
+      default: ''
     },
     imageUrl: {
       type: String,
@@ -119,6 +125,6 @@ const cropSchema = new mongoose.Schema(
 
 cropSchema.index({ 'name.en': 'text', 'name.si': 'text', 'name.ta': 'text', category: 1 });
 
-const Crop = mongoose.model('Crop', cropSchema);
+const Crop = mongoose.model('Crop', cropSchema, 'crops');
 
 module.exports = Crop;

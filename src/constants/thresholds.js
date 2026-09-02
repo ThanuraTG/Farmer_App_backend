@@ -1,38 +1,59 @@
-const MARKET_TREND_THRESHOLDS = {
-  INCREASING_MIN: 5,  // > +5%
-  DECREASING_MAX: -5  // < -5%
-};
-
-const SUPPLY_RISK_THRESHOLDS = {
-  LOW_MAX: 0.8,
-  MEDIUM_MAX: 1.2
-};
+/**
+ * Thresholds for Decision Support and Risk Analysis
+ * Define boundary values for classifications and alerts
+ */
 
 const RECOMMENDATION_CATEGORIES = {
-  HIGHLY_RECOMMENDED: {
-    minScore: 80,
-    maxScore: 100,
-    label: 'highly_recommended'
-  },
-  RECOMMENDED_WITH_CAUTION: {
-    minScore: 60,
-    maxScore: 79,
-    label: 'recommended_with_caution'
-  },
-  HIGH_RISK: {
-    minScore: 40,
-    maxScore: 59,
-    label: 'high_risk'
-  },
-  NOT_RECOMMENDED: {
-    minScore: 0,
-    maxScore: 39,
-    label: 'not_recommended'
-  }
+  HIGHLY_RECOMMENDED: 'highly_recommended',
+  RECOMMENDED: 'recommended',
+  MODERATELY_SUITABLE: 'moderately_suitable',
+  NOT_RECOMMENDED: 'not_recommended'
+};
+
+// Score thresholds for recommendation categories (0-100)
+const RECOMMENDATION_SCORE_THRESHOLDS = {
+  HIGHLY_RECOMMENDED: 75,
+  RECOMMENDED: 60,
+  MODERATELY_SUITABLE: 45,
+  NOT_RECOMMENDED: 0
+};
+
+// Supply Risk Thresholds
+const SUPPLY_RISK_THRESHOLDS = {
+  LOW: { min: 0, max: 30, label: 'Low Risk' },
+  MODERATE: { min: 30, max: 60, label: 'Moderate Risk' },
+  HIGH: { min: 60, max: 100, label: 'High Risk' }
+};
+
+// Market Trend Thresholds
+const MARKET_TREND_THRESHOLDS = {
+  SIGNIFICANT_INCREASE: 15, // % increase
+  MODERATE_INCREASE: 5,
+  STABLE: 5, // ±5%
+  MODERATE_DECREASE: -5,
+  SIGNIFICANT_DECREASE: -15
+};
+
+// Weather Alert Thresholds
+const WEATHER_ALERT_THRESHOLDS = {
+  extremeRain: 100, // mm
+  drought: { consecutiveDays: 7, threshold: 0.1 }, // mm/day
+  extremeTemp: { min: 5, max: 40 }, // Celsius
+  extremeWind: 40 // km/h
+};
+
+// Cultivation Plan Timings
+const CULTIVATION_TIMINGS = {
+  plantingAdvanceWarning: 14, // days before planting
+  irrigationReminder: 3, // days before irrigation
+  harvestReadyWarning: 7 // days before expected harvest
 };
 
 module.exports = {
-  MARKET_TREND_THRESHOLDS,
+  RECOMMENDATION_CATEGORIES,
+  RECOMMENDATION_SCORE_THRESHOLDS,
   SUPPLY_RISK_THRESHOLDS,
-  RECOMMENDATION_CATEGORIES
+  MARKET_TREND_THRESHOLDS,
+  WEATHER_ALERT_THRESHOLDS,
+  CULTIVATION_TIMINGS
 };

@@ -44,6 +44,6 @@ savedCropSchema.set('toObject', {
   }
 });
 
-const SavedCrop = mongoose.model('SavedCrop', savedCropSchema);
+const SavedCrop = mongoose.model('SavedCrop', savedCropSchema, 'savedCrops');
 
 module.exports = SavedCrop;

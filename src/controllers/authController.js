@@ -3,7 +3,7 @@ const { successResponse, errorResponse } = require('../utils/responseHandler');
 
 const register = async (req, res, next) => {
   try {
-    const { fullName, mobile, password, preferredLanguage, province, district, division, farmSize } = req.body;
+    const { fullName, mobile, password, preferredLanguage, province, district, division, divisionId } = req.body;
 
     if (!fullName || !mobile || !password) {
       return errorResponse(res, 400, 'fullName, mobile, and password are required fields');
@@ -21,7 +21,7 @@ const register = async (req, res, next) => {
       province,
       district,
       division,
-      farmSize
+      divisionId
     });
 
     return successResponse(res, 201, 'Farmer registered successfully', {
@@ -42,7 +42,7 @@ const login = async (req, res, next) => {
     const identifier = mobile || email || username;
 
     if (!identifier || !password) {
-      return errorResponse(res, 400, 'Mobile/Email and password are required fields');
+      return errorResponse(res, 400, 'Username or mobile number and password are required fields');
     }
 
     const result = await authService.loginUser(identifier, password);
@@ -75,8 +75,8 @@ const adminLogin = async (req, res, next) => {
 
     const result = await authService.loginUser(identifier, password);
 
-    if (result.user.role !== 'admin' && result.user.role !== 'manager') {
-      return errorResponse(res, 403, 'Access denied. Only administrators can access the admin panel.');
+    if (result.user.role === 'farmer') {
+      return errorResponse(res, 403, 'Access denied. Farmer accounts can only access the mobile app.');
     }
 
     return res.status(200).json({

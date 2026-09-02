@@ -63,6 +63,6 @@ weatherRecordSchema.set('toObject', {
   }
 });
 
-const WeatherRecord = mongoose.model('WeatherRecord', weatherRecordSchema);
+const WeatherRecord = mongoose.model('WeatherRecord', weatherRecordSchema, 'weatherRecords');
 
 module.exports = WeatherRecord;

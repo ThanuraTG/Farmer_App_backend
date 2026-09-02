@@ -3,15 +3,26 @@ const mongoose = require('mongoose');
 const divisionSchema = new mongoose.Schema(
   {
     name: {
-      en: { type: String, required: true, trim: true },
-      si: { type: String, trim: true, default: '' },
-      ta: { type: String, trim: true, default: '' }
+      type: mongoose.Schema.Types.Mixed,
+      required: true
     },
     districtId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'District',
-      required: true,
+      default: null,
       index: true
+    },
+    province: {
+      type: String,
+      default: ''
+    },
+    latitude: {
+      type: Number,
+      default: null
+    },
+    longitude: {
+      type: Number,
+      default: null
     }
   },
   {
@@ -21,6 +32,6 @@ const divisionSchema = new mongoose.Schema(
 
 divisionSchema.index({ districtId: 1, 'name.en': 1 });
 
-const Division = mongoose.model('Division', divisionSchema);
+const Division = mongoose.model('Division', divisionSchema, 'divisions');
 
 module.exports = Division;

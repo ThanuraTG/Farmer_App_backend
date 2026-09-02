@@ -1,5 +1,4 @@
 const Notification = require('../../models/Notification');
-const Advisory = require('../../models/Advisory');
 
 const getFarmerNotifications = async (user) => {
   const now = new Date();
@@ -44,26 +43,7 @@ const markNotificationRead = async (notificationId, userId) => {
   return { message: 'Notification marked as read' };
 };
 
-const getFarmerAdvisories = async (districtId = null, cropId = null) => {
-  const now = new Date();
-  const query = {
-    active: true,
-    start: { $lte: now },
-    $or: [{ expiry: null }, { expiry: { $gte: now } }]
-  };
-
-  if (districtId) {
-    query.$or = [{ targetDistricts: { $size: 0 } }, { targetDistricts: districtId }];
-  }
-
-  return Advisory.find(query)
-    .sort({ start: -1 })
-    .populate('targetDistricts', 'name')
-    .populate('targetCrops', 'name');
-};
-
 module.exports = {
   getFarmerNotifications,
-  markNotificationRead,
-  getFarmerAdvisories
+  markNotificationRead
 };

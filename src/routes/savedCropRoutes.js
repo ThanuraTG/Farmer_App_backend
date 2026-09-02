@@ -1,6 +1,6 @@
 const express = require('express');
 const { saveCrop, unsaveCrop, getUserSavedCrops } = require('../controllers/savedCropController');
-const { protect } = require('../middleware/authMiddleware');
+const { authenticateJWT } = require('../middleware/auth.middleware');
 
 const router = express.Router();
 
@@ -14,7 +14,8 @@ const router = express.Router();
 // Let's create two files or map them cleanly. In server.js, we can map both routing namespaces.
 // In savedCropRoutes.js, we will define the bookmarking writes.
 
-router.post('/', protect, saveCrop);
-router.delete('/:id', protect, unsaveCrop);
+router.get('/', authenticateJWT, getUserSavedCrops);
+router.post('/', authenticateJWT, saveCrop);
+router.delete('/:id', authenticateJWT, unsaveCrop);
 
 module.exports = router;
