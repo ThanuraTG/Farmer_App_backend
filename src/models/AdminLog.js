@@ -52,6 +52,6 @@ adminLogSchema.set('toObject', {
   }
 });
 
-const AdminLog = mongoose.model('AdminLog', adminLogSchema);
+const AdminLog = mongoose.model('AdminLog', adminLogSchema, 'adminLogs');
 
 module.exports = AdminLog;

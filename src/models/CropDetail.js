@@ -168,6 +168,6 @@ cropDetailSchema.set('toObject', {
   }
 });
 
-const CropDetail = mongoose.model('CropDetail', cropDetailSchema);
+const CropDetail = mongoose.model('CropDetail', cropDetailSchema, 'cropDetails');
 
 module.exports = CropDetail;

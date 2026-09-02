@@ -10,18 +10,27 @@ const notificationSchema = new mongoose.Schema(
     },
     message: {
       type: String,
-      required: true,
-      trim: true
+      trim: true,
+      default: function () {
+        return this.title || '';
+      }
     },
     type: {
       type: String,
-      enum: NOTIFICATION_TYPES,
       default: 'general',
       index: true
     },
+    user_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null
+    },
+    is_read: {
+      type: Boolean,
+      default: false
+    },
     audience: {
       type: String,
-      enum: ['all', 'farmers', 'district', 'crop', 'specific'],
       default: 'all'
     },
     targetProvince: {
@@ -81,6 +90,6 @@ const notificationSchema = new mongoose.Schema(
 
 notificationSchema.index({ active: 1, startAt: 1, expiresAt: 1 });
 
-const Notification = mongoose.model('Notification', notificationSchema);
+const Notification = mongoose.model('Notification', notificationSchema, 'notifications');
 
 module.exports = Notification;

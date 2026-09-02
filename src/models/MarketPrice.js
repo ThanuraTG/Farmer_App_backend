@@ -5,34 +5,46 @@ const marketPriceSchema = new mongoose.Schema(
     cropId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Crop',
-      required: true,
       index: true
+    },
+    crop_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Crop'
     },
     economicCentreId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'EconomicCentre',
-      required: true,
       index: true
+    },
+    market_location: {
+      type: String,
+      default: ''
     },
     date: {
       type: Date,
-      required: true,
       index: true
+    },
+    price_date: {
+      type: Date
     },
     minPrice: {
       type: Number,
-      required: true,
+      default: 0,
       min: 0
     },
     maxPrice: {
       type: Number,
-      required: true,
+      default: 0,
       min: 0
     },
     averagePrice: {
       type: Number,
-      required: true,
+      default: 0,
       min: 0
+    },
+    price_per_kg: {
+      type: Number,
+      default: 0
     },
     unit: {
       type: String,
@@ -48,6 +60,10 @@ const marketPriceSchema = new mongoose.Schema(
       type: String,
       default: ''
     },
+    added_by_user_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -59,10 +75,23 @@ const marketPriceSchema = new mongoose.Schema(
   }
 );
 
-// Compound unique index for crop + economic centre + date
-marketPriceSchema.index({ cropId: 1, economicCentreId: 1, date: 1 }, { unique: true });
-marketPriceSchema.index({ cropId: 1, date: -1 });
+// Pre-save hook to ensure field synchronization between camelCase and snake_case
+marketPriceSchema.pre('save', function (next) {
+  if (this.crop_id && !this.cropId) this.cropId = this.crop_id;
+  if (this.cropId && !this.crop_id) this.crop_id = this.cropId;
+  if (this.price_date && !this.date) this.date = this.price_date;
+  if (this.date && !this.price_date) this.price_date = this.date;
+  if (this.price_per_kg && !this.averagePrice) this.averagePrice = this.price_per_kg;
+  if (this.averagePrice && !this.price_per_kg) this.price_per_kg = this.averagePrice;
+  if (!this.minPrice) this.minPrice = this.averagePrice || this.price_per_kg || 0;
+  if (!this.maxPrice) this.maxPrice = this.averagePrice || this.price_per_kg || 0;
+  next();
+});
 
-const MarketPrice = mongoose.model('MarketPrice', marketPriceSchema);
+// Compound index for crop + date lookup
+marketPriceSchema.index({ cropId: 1, date: -1 });
+marketPriceSchema.index({ market_location: 1, date: -1 });
+
+const MarketPrice = mongoose.model('MarketPrice', marketPriceSchema, 'marketPrices');
 
 module.exports = MarketPrice;

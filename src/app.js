@@ -7,26 +7,15 @@ const { errorHandler } = require('./middleware/error.middleware');
 
 // Route Imports
 const authRoutes = require('./routes/authRoutes');
-const locationRoutes = require('./routes/locationRoutes');
+const userRoutes = require('./routes/userRoutes');
 const cropRoutes = require('./routes/cropRoutes');
-const economicCentreRoutes = require('./routes/economicCentreRoutes');
-const marketPriceRoutes = require('./routes/marketPriceRoutes');
-const weatherRoutes = require('./routes/weatherRoutes');
-const cultivationPlanRoutes = require('./routes/cultivationPlanRoutes');
-const recommendationRoutes = require('./routes/recommendationRoutes');
+const divisionRoutes = require('./routes/divisionRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
-const advisoryRoutes = require('./routes/advisoryRoutes');
-const feedbackRoutes = require('./routes/feedbackRoutes');
-const contentRoutes = require('./routes/contentRoutes');
-const adminRoutes = require('./routes/adminRoutes');
-
-// Legacy routes for backward compatibility
-const areaRoutes = require('./routes/areaRoutes');
-const priceRoutes = require('./routes/priceRoutes');
-const marketRoutes = require('./routes/marketRoutes');
-const sourceRoutes = require('./routes/sourceRoutes');
 const savedCropRoutes = require('./routes/savedCropRoutes');
-const reportRoutes = require('./routes/reportRoutes');
+const weatherRoutes = require('./routes/weatherRoutes');
+const marketPriceRoutes = require('./routes/marketPriceRoutes');
+const adminMarketPriceRoutes = require('./routes/adminMarketPriceRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 const app = express();
 
@@ -79,27 +68,16 @@ app.get('/api/health', (req, res) => {
 
 // Primary REST API Routes (Architecture Diagram Compliant)
 app.use('/api/auth', authRoutes);
-app.use('/api/locations', locationRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/crops', cropRoutes);
-app.use('/api/economic-centres', economicCentreRoutes);
-app.use('/api/market-prices', marketPriceRoutes);
-app.use('/api/weather', weatherRoutes);
-app.use('/api/cultivation-plans', cultivationPlanRoutes);
-app.use('/api/recommendations', recommendationRoutes);
-app.use('/api/recommendation', recommendationRoutes); // Diagram singular route alias
+app.use('/api/divisions', divisionRoutes);
+app.use('/api/areas', divisionRoutes);
 app.use('/api/notifications', notificationRoutes);
-app.use('/api/advisories', advisoryRoutes);
-app.use('/api/feedback', feedbackRoutes);
-app.use('/api/content', contentRoutes);
-app.use('/api/admin', adminRoutes);
-
-// Legacy API Mappings (Preserved for existing endpoints)
-app.use('/api/areas', areaRoutes);
-app.use('/api/prices', priceRoutes);
-app.use('/api/markets', marketRoutes);
-app.use('/api/sources', sourceRoutes);
 app.use('/api/saved-crops', savedCropRoutes);
-app.use('/api/reports', reportRoutes);
+app.use('/api/weather', weatherRoutes);
+app.use('/api/market-prices', marketPriceRoutes);
+app.use('/api/admin/market-prices', adminMarketPriceRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 404 Route Handler
 app.use('*', (req, res) => {

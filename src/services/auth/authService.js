@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 const User = require('../../models/User');
 const env = require('../../config/env');
 
@@ -10,7 +11,7 @@ const generateToken = (id, role) => {
 };
 
 const registerFarmer = async (userData) => {
-  const { fullName, mobile, password, preferredLanguage, province, district, division, farmSize } = userData;
+  const { fullName, mobile, password, preferredLanguage, province, district, division, divisionId } = userData;
 
   const existingUser = await User.findOne({
     $or: [{ phone_number: mobile.trim() }, { username: fullName.trim() }]
@@ -30,7 +31,12 @@ const registerFarmer = async (userData) => {
     email: `${mobile.trim()}@farmer.local`,
     phone_number: mobile.trim(),
     password_hash: passwordHash,
-    role: 'farmer'
+    role: 'farmer',
+    province: province || '',
+    district: district || '',
+    division: division || '',
+    division_id: mongoose.Types.ObjectId.isValid(divisionId) ? divisionId : null,
+    preferredLanguage: preferredLanguage || 'en'
   });
 
   const token = generateToken(user._id, user.role);
@@ -43,7 +49,7 @@ const registerFarmer = async (userData) => {
 
 const loginUser = async (identifier, password) => {
   if (!identifier || !password) {
-    const err = new Error('Mobile number/email and password are required');
+    const err = new Error('Username or mobile number and password are required');
     err.statusCode = 400;
     throw err;
   }
@@ -97,4 +103,3 @@ module.exports = {
   getUserProfile,
   generateToken
 };
-

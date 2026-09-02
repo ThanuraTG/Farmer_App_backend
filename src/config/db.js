@@ -7,9 +7,11 @@ const connectDB = async () => {
       throw new Error('DATABASE_URL is not defined in the environmental variables.');
     }
 
-    const conn = await mongoose.connect(dbUri);
+    const conn = await mongoose.connect(dbUri, {
+      dbName: process.env.DB_NAME || 'Farmar_db'
+    });
     console.log(`========================================================`);
-    console.log(` MongoDB Connected: ${conn.connection.host}`);
+    console.log(` MongoDB Connected (${conn.connection.name}): ${conn.connection.host}`);
     console.log(`========================================================`);
   } catch (error) {
     console.error(`MongoDB connection error: ${error.message}`);

@@ -5,7 +5,7 @@ const Crop = require('../models/Crop');
 // @route   GET /api/users/:id/saved-crops
 // @access  Private
 const getUserSavedCrops = async (req, res) => {
-  const userId = req.params.id;
+  const userId = req.user._id;
 
   try {
     const savedCrops = await SavedCrop.find({ user_id: userId })

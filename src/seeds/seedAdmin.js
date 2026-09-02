@@ -9,14 +9,26 @@ const seedAdmin = async () => {
   try {
     await connectDB();
 
-    const adminMobile = process.env.ADMIN_MOBILE || '0770000000';
-    const adminPassword = process.env.ADMIN_PASSWORD || 'AdminPassword123!';
+    const adminEmail = (process.env.SEED_ADMIN_EMAIL || 'admin@farmer.com').trim().toLowerCase();
+    const adminPassword = process.env.SEED_ADMIN_PASSWORD || 'admin123';
+    const adminMobile = (process.env.ADMIN_MOBILE || '').trim();
 
     const existingAdmin = await User.findOne({
-      $or: [{ phone_number: adminMobile }, { email: `${adminMobile}@admin.local` }]
+      $or: [
+        { email: adminEmail },
+        ...(adminMobile ? [{ phone_number: adminMobile }, { mobile: adminMobile }] : [])
+      ]
     });
     if (existingAdmin) {
-      logger.info(`Admin user with mobile ${adminMobile} already exists.`);
+      if (process.env.RESET_ADMIN_PASSWORD === 'true') {
+        existingAdmin.password_hash = await bcrypt.hash(adminPassword, 10);
+        existingAdmin.role = 'admin';
+        existingAdmin.accountStatus = 'active';
+        await existingAdmin.save();
+        logger.info(`Admin password reset successfully for ${existingAdmin.email}.`);
+      } else {
+        logger.info(`Admin user ${existingAdmin.email} already exists. Set RESET_ADMIN_PASSWORD=true to reset its password.`);
+      }
       process.exit(0);
     }
 
@@ -25,13 +37,13 @@ const seedAdmin = async () => {
 
     const admin = await User.create({
       username: 'System Administrator',
-      email: `${adminMobile}@admin.local`,
-      phone_number: adminMobile,
+      email: adminEmail,
+      ...(adminMobile ? { phone_number: adminMobile, mobile: adminMobile } : {}),
       password_hash: passwordHash,
       role: 'admin'
     });
 
-    logger.info(`Admin user created successfully: ${admin.phone_number}`);
+    logger.info(`Admin user created successfully: ${admin.email}`);
     process.exit(0);
   } catch (error) {
     logger.error('Error seeding admin user', error);
