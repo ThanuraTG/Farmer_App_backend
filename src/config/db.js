@@ -1,10 +1,11 @@
 const mongoose = require('mongoose');
+const env = require('./env');
 
 const connectDB = async () => {
   try {
-    const dbUri = process.env.DATABASE_URL;
+    const dbUri = env.DATABASE_URL || env.MONGODB_URI;
     if (!dbUri) {
-      throw new Error('DATABASE_URL is not defined in the environmental variables.');
+      throw new Error('Set DATABASE_URL or MONGODB_URI before starting the backend.');
     }
 
     const conn = await mongoose.connect(dbUri, {

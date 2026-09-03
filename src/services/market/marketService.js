@@ -1,10 +1,23 @@
 const MarketPrice = require('../../models/MarketPrice');
 const Crop = require('../../models/Crop');
 
-const buildQuery = ({ cropId, centreId, startDate, endDate } = {}) => {
+const objectIdPattern = /^[a-f\d]{24}$/i;
+
+const escapeRegExp = (value = '') => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const buildQuery = ({ cropId, centreId, marketLocation, startDate, endDate } = {}) => {
   const query = {};
-  if (cropId) query.cropId = cropId;
-  if (centreId) query.economicCentreId = centreId;
+  if (cropId) query.$or = [{ cropId }, { crop_id: cropId }];
+  if (centreId) {
+    if (objectIdPattern.test(String(centreId))) {
+      query.economicCentreId = centreId;
+    } else {
+      query.market_location = { $regex: escapeRegExp(String(centreId).trim()), $options: 'i' };
+    }
+  }
+  if (marketLocation) {
+    query.market_location = { $regex: escapeRegExp(String(marketLocation).trim()), $options: 'i' };
+  }
   if (startDate || endDate) {
     query.date = {};
     if (startDate) query.date.$gte = new Date(startDate);
@@ -13,16 +26,16 @@ const buildQuery = ({ cropId, centreId, startDate, endDate } = {}) => {
   return query;
 };
 
-const getLatestMarketPrice = async (cropId, centreId) => MarketPrice.findOne(buildQuery({ cropId, centreId }))
+const getLatestMarketPrice = async (cropId, centreId, marketLocation) => MarketPrice.findOne(buildQuery({ cropId, centreId, marketLocation }))
   .sort({ date: -1 })
   .populate('cropId', 'name category')
   .populate('economicCentreId', 'name districtName');
 
 const getMarketPriceHistory = async (params) => {
-  const { page = 1, limit = 30 } = params;
+  const { page = 1, limit = 100 } = params;
   const query = buildQuery(params);
   const pageNumber = Math.max(Number(page), 1);
-  const pageSize = Math.min(Math.max(Number(limit), 1), 100);
+  const pageSize = Math.min(Math.max(Number(limit) || 100, 1), 100);
   const totalItems = await MarketPrice.countDocuments(query);
   const items = await MarketPrice.find(query)
     .sort({ date: -1 })
@@ -42,8 +55,8 @@ const getMarketPriceHistory = async (params) => {
   };
 };
 
-const getMarketPriceSummary = async (cropId, centreId) => {
-  const records = await MarketPrice.find(buildQuery({ cropId, centreId }))
+const getMarketPriceSummary = async (cropId, centreId, marketLocation) => {
+  const records = await MarketPrice.find(buildQuery({ cropId, centreId, marketLocation }))
     .sort({ date: -1 })
     .limit(30);
 
@@ -104,17 +117,27 @@ const importMarketPricesCSV = async (rows, userId) => {
       if (!crop) throw new Error(`Crop '${cropName}' does not exist`);
 
       await MarketPrice.findOneAndUpdate(
-        { cropId: crop._id, market_location: marketLocation, date },
+        {
+          $and: [
+            { $or: [{ cropId: crop._id }, { crop_id: crop._id }] },
+            { market_location: marketLocation },
+            { date }
+          ]
+        },
         {
           cropId: crop._id,
+          crop_id: crop._id,
           market_location: marketLocation,
           date,
+          price_date: date,
           minPrice,
           maxPrice,
           averagePrice,
+          price_per_kg: averagePrice,
           unit: row.unit || 'kg',
           source: 'CSV import',
-          createdBy: userId
+          createdBy: userId,
+          added_by_user_id: userId
         },
         { upsert: true, new: true, runValidators: true }
       );

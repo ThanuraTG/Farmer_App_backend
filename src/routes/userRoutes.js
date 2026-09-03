@@ -44,7 +44,6 @@ router.get(
 router.put(
   '/:id',
   authenticateJWT,
-  authorizeRoles('admin', 'manager'),
   userController.updateUser
 );
 

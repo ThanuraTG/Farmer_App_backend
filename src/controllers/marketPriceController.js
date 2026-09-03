@@ -1,19 +1,52 @@
 const marketService = require('../services/market/marketService');
 const MarketPrice = require('../models/MarketPrice');
 const Crop = require('../models/Crop');
+const Notification = require('../models/Notification');
 const { PDFParse } = require('pdf-parse');
 const { successResponse, errorResponse } = require('../utils/responseHandler');
 
 const mainMarkets = ['Dambulla', 'Nuwara Eliya', 'Meegoda', 'Keppetipola', 'Narahenpita', 'Rathmalana', 'Peliyagoda'];
 
+const getCropName = (crop) => {
+  if (!crop) return 'Crop';
+  return typeof crop.name === 'object'
+    ? String(crop.name.en || crop.name.si || crop.name.ta || 'Crop')
+    : String(crop.name || 'Crop');
+};
+
+const formatDateLabel = (date) => {
+  if (!date) return 'today';
+  const parsedDate = new Date(date);
+  if (Number.isNaN(parsedDate.getTime())) return 'today';
+  return parsedDate.toISOString().split('T')[0];
+};
+
+const publishMarketPriceNotification = async ({ cropId, marketLocation, price, date, createdBy, count }) => {
+  const crop = cropId ? await Crop.findById(cropId).select('name').lean() : null;
+  const cropName = getCropName(crop);
+  const dateLabel = formatDateLabel(date);
+  const message = count
+    ? `${count} market price records were uploaded for ${dateLabel}. Open Market to view the latest prices.`
+    : `${cropName} is now Rs. ${Number(price).toFixed(0)} per kg at ${marketLocation || 'the selected market'} (${dateLabel}).`;
+
+  await Notification.create({
+    title: count ? 'Daily market prices updated' : `${cropName} market price updated`,
+    message,
+    type: 'market_price_update',
+    audience: 'all',
+    targetCrop: cropId || null,
+    createdBy
+  });
+};
+
 const getLatest = async (req, res, next) => {
   try {
-    const { cropId, centreId } = req.query;
+    const { cropId, centreId, marketLocation } = req.query;
     if (!cropId) {
       return errorResponse(res, 400, 'cropId query parameter is required');
     }
 
-    const latest = await marketService.getLatestMarketPrice(cropId, centreId);
+    const latest = await marketService.getLatestMarketPrice(cropId, centreId, marketLocation);
     return successResponse(res, 200, 'Latest market price retrieved', latest);
   } catch (err) {
     next(err);
@@ -31,12 +64,12 @@ const getHistory = async (req, res, next) => {
 
 const getSummary = async (req, res, next) => {
   try {
-    const { cropId, centreId } = req.query;
+    const { cropId, centreId, marketLocation } = req.query;
     if (!cropId) {
       return errorResponse(res, 400, 'cropId query parameter is required');
     }
 
-    const summary = await marketService.getMarketPriceSummary(cropId, centreId);
+    const summary = await marketService.getMarketPriceSummary(cropId, centreId, marketLocation);
     return successResponse(res, 200, 'Market price trend summary retrieved', summary);
   } catch (err) {
     next(err);
@@ -49,7 +82,7 @@ const adminGetMarketPrices = async (req, res, next) => {
     const { cropId, centreId, marketLocation, startDate, endDate, page = 1, limit = 20 } = req.query;
 
     const query = {};
-    if (cropId) query.cropId = cropId;
+    if (cropId) query.$or = [{ cropId }, { crop_id: cropId }];
     if (centreId) query.economicCentreId = centreId;
     if (marketLocation) query.market_location = { $regex: marketLocation, $options: 'i' };
 
@@ -84,35 +117,59 @@ const adminGetMarketPrices = async (req, res, next) => {
 
 const adminCreateMarketPrice = async (req, res, next) => {
   try {
-    const { cropId, economicCentreId, marketLocation, date, minPrice, maxPrice, averagePrice, unit, source, notes } = req.body;
+    const cropId = req.body.cropId || req.body.crop_id;
+    const economicCentreId = req.body.economicCentreId || req.body.economic_centre_id;
+    const marketLocation = req.body.marketLocation || req.body.market_location || '';
+    const date = req.body.date || req.body.price_date;
+    const basePrice = req.body.pricePerKg ?? req.body.price_per_kg;
+    const rawMin = req.body.minPrice ?? basePrice;
+    const rawMax = req.body.maxPrice ?? basePrice;
+    const rawAverage = req.body.averagePrice ?? basePrice;
+    const numMin = Number(rawMin);
+    const numMax = Number(rawMax);
+    const numAvg = rawAverage !== undefined ? Number(rawAverage) : Number(((numMin + numMax) / 2).toFixed(2));
+    const recordDate = new Date(date);
 
-    const numMin = Number(minPrice);
-    const numMax = Number(maxPrice);
-    const numAvg = averagePrice !== undefined ? Number(averagePrice) : Number(((numMin + numMax) / 2).toFixed(2));
-
-    if (numMin < 0 || numMax < numMin) {
+    if (!cropId || Number.isNaN(recordDate.getTime()) || !Number.isFinite(numMin) || !Number.isFinite(numMax) || !Number.isFinite(numAvg) || numMin < 0 || numMax < numMin) {
       return errorResponse(res, 400, 'Invalid price range: minPrice must be >= 0 and maxPrice must be >= minPrice');
     }
 
-    const recordDate = new Date(date);
-
     const price = await MarketPrice.findOneAndUpdate(
-      { cropId, economicCentreId: economicCentreId || null, market_location: marketLocation || '', date: recordDate },
+      {
+        $and: [
+          { $or: [{ cropId }, { crop_id: cropId }] },
+          { economicCentreId: economicCentreId || null },
+          { market_location: marketLocation || '' },
+          { date: recordDate }
+        ]
+      },
       {
         cropId,
+        crop_id: cropId,
         economicCentreId: economicCentreId || null,
         market_location: marketLocation || '',
         date: recordDate,
+        price_date: recordDate,
         minPrice: numMin,
         maxPrice: numMax,
         averagePrice: numAvg,
-        unit: unit || 'kg',
-        source: source || 'admin',
-        notes: notes || '',
-        createdBy: req.user._id
+        price_per_kg: numAvg,
+        unit: req.body.unit || 'kg',
+        source: req.body.source || 'admin',
+        notes: req.body.notes || '',
+        createdBy: req.user._id,
+        added_by_user_id: req.user._id
       },
       { upsert: true, new: true, runValidators: true }
     );
+
+    await publishMarketPriceNotification({
+      cropId,
+      marketLocation,
+      price: numAvg,
+      date: recordDate,
+      createdBy: req.user._id
+    });
 
     return successResponse(res, 201, 'Market price recorded successfully', price);
   } catch (err) {
@@ -122,10 +179,27 @@ const adminCreateMarketPrice = async (req, res, next) => {
 
 const adminUpdateMarketPrice = async (req, res, next) => {
   try {
-    const price = await MarketPrice.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    const updates = { ...req.body };
+    if (updates.crop_id && !updates.cropId) updates.cropId = updates.crop_id;
+    if (updates.cropId) updates.crop_id = updates.cropId;
+    if (updates.price_date && !updates.date) updates.date = updates.price_date;
+    if (updates.date) updates.price_date = updates.date;
+    if (updates.price_per_kg !== undefined && updates.averagePrice === undefined) {
+      updates.averagePrice = updates.price_per_kg;
+    }
+    if (updates.averagePrice !== undefined) updates.price_per_kg = updates.averagePrice;
+
+    const price = await MarketPrice.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true });
     if (!price) {
       return errorResponse(res, 404, 'Market price record not found');
     }
+    await publishMarketPriceNotification({
+      cropId: price.cropId || price.crop_id,
+      marketLocation: price.market_location,
+      price: price.averagePrice || price.price_per_kg,
+      date: price.date || price.price_date,
+      createdBy: req.user._id
+    });
     return successResponse(res, 200, 'Market price record updated', price);
   } catch (err) {
     next(err);
@@ -272,6 +346,12 @@ const adminImportMarketPrices = async (req, res, next) => {
     const rows = isPdf ? await parsePdfRows(req.file.buffer, req.file.originalname) : parseCsvRows(req.file.buffer);
 
     const result = await marketService.importMarketPricesCSV(rows, req.user._id);
+    if (result.rowsImported > 0) {
+      await publishMarketPriceNotification({
+        createdBy: req.user._id,
+        count: result.rowsImported
+      });
+    }
     return successResponse(res, 200, `${isPdf ? 'PDF' : 'CSV'} market prices import processed`, result);
   } catch (err) {
     next(err);

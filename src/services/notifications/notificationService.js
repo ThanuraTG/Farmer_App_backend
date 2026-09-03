@@ -6,12 +6,16 @@ const getFarmerNotifications = async (user) => {
   const query = {
     active: true,
     startAt: { $lte: now },
-    $or: [{ expiresAt: null }, { expiresAt: { $gte: now } }],
-    $or: [
-      { audience: 'all' },
-      { audience: 'farmers' },
-      { targetDistrict: user.district },
-      { targetUsers: user._id }
+    $and: [
+      { $or: [{ expiresAt: null }, { expiresAt: { $gte: now } }] },
+      {
+        $or: [
+          { audience: 'all' },
+          { audience: 'farmers' },
+          { targetDistrict: user.district },
+          { targetUsers: user._id }
+        ]
+      }
     ]
   };
 
@@ -35,7 +39,7 @@ const markNotificationRead = async (notificationId, userId) => {
     throw err;
   }
 
-  if (!notification.readBy.includes(userId)) {
+  if (!notification.readBy.some((id) => id.toString() === userId.toString())) {
     notification.readBy.push(userId);
     await notification.save();
   }

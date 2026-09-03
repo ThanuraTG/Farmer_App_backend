@@ -1,3 +1,4 @@
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -18,6 +19,11 @@ const adminMarketPriceRoutes = require('./routes/adminMarketPriceRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 
 const app = express();
+
+// Lightweight endpoint for uptime monitoring tools.
+app.get('/goviya', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
 
 // Security Headers
 app.use(helmet());
@@ -46,6 +52,9 @@ app.use(
 // Body Parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Public media files used by crop images and similar assets
+app.use('/media', express.static(path.join(__dirname, '../public')));
 
 // Rate limiting for auth endpoints
 const authLimiter = rateLimit({

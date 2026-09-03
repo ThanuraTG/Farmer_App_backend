@@ -168,6 +168,11 @@ const updateUser = async (req, res, next) => {
       return errorResponse(res, 400, 'Invalid or missing user ID');
     }
 
+    const canManageUsers = ['admin', 'manager'].includes(String(req.user.role).toLowerCase());
+    if (!canManageUsers && req.user._id.toString() !== id) {
+      return errorResponse(res, 403, 'You can only update your own profile');
+    }
+
     const {
       fullName,
       mobile,
@@ -227,11 +232,11 @@ const updateUser = async (req, res, next) => {
     }
 
     const validRoles = ['farmer', 'admin', 'data_entry', 'manager'];
-    if (role && validRoles.includes(role)) {
+    if (canManageUsers && role && validRoles.includes(role)) {
       user.role = role;
     }
 
-    if (accountStatus && ['active', 'inactive', 'suspended'].includes(accountStatus)) {
+    if (canManageUsers && accountStatus && ['active', 'inactive', 'suspended'].includes(accountStatus)) {
       user.accountStatus = accountStatus;
     }
 
