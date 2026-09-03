@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "generate:crop-images": "powershell.exe -ExecutionPolicy Bypass -File .\\scripts\\generateCropImages.ps1",
     "seed:admin": "node src/seeds/seedAdmin.js",
     "seed:crops": "node src/seeds/seedCrops.js",
     "seed:locations": "node src/seeds/seedLocations.js",

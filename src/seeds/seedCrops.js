@@ -50,10 +50,18 @@ const cropGroups = [
   }
 ];
 
+const slugifyCropName = (value) => String(value || '')
+  .toLowerCase()
+  .replace(/&/g, ' and ')
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-+|-+$/g, '');
+
+const getCropImagePath = (englishName) => `/media/crops/${slugifyCropName(englishName)}.png`;
+
 const crops = cropGroups.flatMap(({ category, crops: entries }) => entries.map(([english, sinhala]) => ({
   name: { en: english, si: sinhala, ta: '' },
   category,
-  imageUrl: `https://placehold.co/160x100/0f766e/ffffff?text=${encodeURIComponent(english)}`,
+  imageUrl: getCropImagePath(english),
   status: 'active',
   description: { en: `${english} cultivation crop`, si: sinhala, ta: '' }
 }))).map((crop, index) => ({
@@ -83,4 +91,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { crops, seedCrops };
+module.exports = { crops, seedCrops, cropGroups, slugifyCropName, getCropImagePath };

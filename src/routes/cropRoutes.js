@@ -6,6 +6,7 @@ const { authorizeRoles } = require('../middleware/role.middleware');
 
 router.get('/admin/list', authenticateJWT, authorizeRoles('admin', 'manager'), cropController.adminGetCrops);
 router.get('/', cropController.getCrops);
+router.get('/:id/decision-support', cropController.getDecisionSupport);
 router.get('/:id', cropController.getCropById);
 router.post('/', authenticateJWT, authorizeRoles('admin', 'manager'), cropController.createCrop);
 router.put('/:id', authenticateJWT, authorizeRoles('admin', 'manager'), cropController.updateCrop);

@@ -4,7 +4,14 @@ dotenv.config();
 const env = {
   NODE_ENV: process.env.NODE_ENV || 'development',
   PORT: process.env.PORT || 5000,
-  MONGODB_URI: process.env.MONGODB_URI || 'mongodb://localhost:27017/farmer_aswanna_db',
+  DATABASE_URL:
+      process.env.DATABASE_URL ||
+      process.env.MONGODB_URI ||
+      'mongodb://localhost:27017/farmer_aswanna_db',
+  MONGODB_URI:
+      process.env.MONGODB_URI ||
+      process.env.DATABASE_URL ||
+      'mongodb://localhost:27017/farmer_aswanna_db',
   JWT_SECRET: process.env.JWT_SECRET || 'fallback_jwt_secret_key_change_in_production_123!',
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
   WEATHER_API_KEY: process.env.WEATHER_API_KEY || '',
