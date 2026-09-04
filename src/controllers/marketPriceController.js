@@ -62,6 +62,15 @@ const getHistory = async (req, res, next) => {
   }
 };
 
+const getTop = async (req, res, next) => {
+  try {
+    const prices = await marketService.getTopMarketPrices(req.query.limit);
+    return successResponse(res, 200, 'Top market prices retrieved', prices);
+  } catch (err) {
+    next(err);
+  }
+};
+
 const getSummary = async (req, res, next) => {
   try {
     const { cropId, centreId, marketLocation } = req.query;
@@ -361,6 +370,7 @@ const adminImportMarketPrices = async (req, res, next) => {
 module.exports = {
   getLatest,
   getHistory,
+  getTop,
   getSummary,
   adminGetMarketPrices,
   adminCreateMarketPrice,

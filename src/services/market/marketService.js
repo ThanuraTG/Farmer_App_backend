@@ -55,6 +55,72 @@ const getMarketPriceHistory = async (params) => {
   };
 };
 
+// Select each crop's newest price at every market, then rank crops by the
+// highest currently available market price. This avoids using stale records.
+const getTopMarketPrices = async (limit = 4) => {
+  const itemLimit = Math.min(Math.max(Number(limit) || 4, 1), 20);
+
+  return MarketPrice.aggregate([
+    {
+      $addFields: {
+        resolvedCropId: { $ifNull: ['$cropId', '$crop_id'] },
+        resolvedDate: { $ifNull: ['$date', { $ifNull: ['$price_date', '$createdAt'] }] },
+        resolvedPrice: {
+          $cond: [
+            { $gt: [{ $ifNull: ['$averagePrice', 0] }, 0] },
+            '$averagePrice',
+            '$price_per_kg'
+          ]
+        },
+        resolvedMarket: { $ifNull: ['$market_location', ''] }
+      }
+    },
+    {
+      $match: {
+        resolvedCropId: { $ne: null },
+        resolvedPrice: { $gt: 0 }
+      }
+    },
+    { $sort: { resolvedCropId: 1, resolvedMarket: 1, resolvedDate: -1 } },
+    {
+      $group: {
+        _id: { cropId: '$resolvedCropId', market: '$resolvedMarket' },
+        record: { $first: '$$ROOT' }
+      }
+    },
+    { $replaceRoot: { newRoot: '$record' } },
+    { $sort: { resolvedPrice: -1, resolvedDate: -1 } },
+    {
+      $group: {
+        _id: '$resolvedCropId',
+        record: { $first: '$$ROOT' }
+      }
+    },
+    { $replaceRoot: { newRoot: '$record' } },
+    { $sort: { resolvedPrice: -1, resolvedDate: -1 } },
+    { $limit: itemLimit },
+    {
+      $lookup: {
+        from: 'crops',
+        localField: 'resolvedCropId',
+        foreignField: '_id',
+        as: 'crop'
+      }
+    },
+    { $unwind: '$crop' },
+    {
+      $project: {
+        _id: 1,
+        cropId: '$crop',
+        market_location: '$resolvedMarket',
+        averagePrice: '$resolvedPrice',
+        price_per_kg: '$resolvedPrice',
+        date: '$resolvedDate'
+      }
+    }
+  ]);
+};
+
 const getMarketPriceSummary = async (cropId, centreId, marketLocation) => {
   const records = await MarketPrice.find(buildQuery({ cropId, centreId, marketLocation }))
     .sort({ date: -1 })
@@ -154,6 +220,7 @@ const importMarketPricesCSV = async (rows, userId) => {
 module.exports = {
   getLatestMarketPrice,
   getMarketPriceHistory,
+  getTopMarketPrices,
   getMarketPriceSummary,
   importMarketPricesCSV
 };

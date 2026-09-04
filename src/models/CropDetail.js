@@ -91,7 +91,8 @@ const cropDetailSchema = new mongoose.Schema(
       optimal_temp: { type: String, trim: true },
       rainfall_tolerance: { type: String, trim: true },
       max_rainfall_mm: { type: Number, default: 150 },
-      optimal_humidity: { type: String, trim: true }
+      optimal_humidity: { type: String, trim: true },
+      sunlight_requirement: { type: String, trim: true }
     },
 
     // Yield Information

@@ -1,6 +1,9 @@
 const mongoose = require('mongoose');
 const { NOTIFICATION_TYPES } = require('../constants/statusEnums');
 
+require('./Province');
+require('./District');
+
 const notificationSchema = new mongoose.Schema(
   {
     title: {

@@ -1,4 +1,22 @@
 const Notification = require('../../models/Notification');
+const mongoose = require('mongoose');
+
+const buildAudienceConditions = (user) => {
+  const conditions = [
+    { audience: 'all' },
+    { audience: 'farmers' },
+    { targetUsers: user._id }
+  ];
+  const districtId = user?.district?._id || user?.district;
+
+  // Older user profiles store district names such as "Badulla". Only query the
+  // ObjectId notification field when the profile has a real district identifier.
+  if (mongoose.Types.ObjectId.isValid(districtId)) {
+    conditions.push({ targetDistrict: districtId });
+  }
+
+  return conditions;
+};
 
 const getFarmerNotifications = async (user) => {
   const now = new Date();
@@ -9,12 +27,7 @@ const getFarmerNotifications = async (user) => {
     $and: [
       { $or: [{ expiresAt: null }, { expiresAt: { $gte: now } }] },
       {
-        $or: [
-          { audience: 'all' },
-          { audience: 'farmers' },
-          { targetDistrict: user.district },
-          { targetUsers: user._id }
-        ]
+        $or: buildAudienceConditions(user)
       }
     ]
   };
@@ -48,6 +61,7 @@ const markNotificationRead = async (notificationId, userId) => {
 };
 
 module.exports = {
+  buildAudienceConditions,
   getFarmerNotifications,
   markNotificationRead
 };

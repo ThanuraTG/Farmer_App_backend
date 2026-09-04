@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
 
+require('./District');
+
 const divisionSchema = new mongoose.Schema(
   {
     name: {

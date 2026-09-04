@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 const { CROP_STATUSES } = require('../constants/statusEnums');
 
+require('./District');
+
 const cropSchema = new mongoose.Schema(
   {
     cropCode: {
